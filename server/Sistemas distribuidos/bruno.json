@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Sistemas distribuidos",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
