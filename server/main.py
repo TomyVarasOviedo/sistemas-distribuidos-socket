@@ -38,6 +38,11 @@ html = """
 
 
 def evalute_text(expression: str) -> str:
+    """
+    Metodo para capturar adaptar y evaluar la expresion enviada por el socket 
+    @param: expresion Type String
+    @return resultado Type String
+    """
     match expression:
         case expression if "^" in expression:
             expression = expression.replace("^", "**")
@@ -58,8 +63,8 @@ async def check_healt():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+    await websocket.accept() # Se crea el socket de forma asincrona
     while True:
-        data = await websocket.receive_text()
-        response = evalute_text(data)
-        await websocket.send_text(str(response))
+        data = await websocket.receive_text() # El socket se coloca en modo escucha, para recibir mensajes
+        response = evalute_text(data) # Se le envia la informacion a la funcion para evaluar la expresion
+        await websocket.send_text(str(response)) # El socket responde al cliente con el resultado
