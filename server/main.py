@@ -1,7 +1,16 @@
 from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from starlette.websockets import WebSocketDisconnect
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 html = """
 <!DOCTYPE html>
 <html>
@@ -38,11 +47,6 @@ html = """
 
 
 def evalute_text(expression: str) -> str:
-    """
-    Metodo para capturar adaptar y evaluar la expresion enviada por el socket 
-    @param: expresion Type String
-    @return resultado Type String
-    """
     match expression:
         case expression if "^" in expression:
             expression = expression.replace("^", "**")
@@ -63,8 +67,18 @@ async def check_healt():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept() # Se crea el socket de forma asincrona
+    await websocket.accept()
     while True:
-        data = await websocket.receive_text() # El socket se coloca en modo escucha, para recibir mensajes
-        response = evalute_text(data) # Se le envia la informacion a la funcion para evaluar la expresion
-        await websocket.send_text(str(response)) # El socket responde al cliente con el resultado
+        try:
+            data = await websocket.receive_text()
+            response = evalute_text(data)
+            await websocket.send_text(str(response))
+        except WebSocketDisconnect as e:
+            print(f"Error: Desconexion inesperada: {e}")
+            pass
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(host="0.0.0.0", port=8000, app=app)
