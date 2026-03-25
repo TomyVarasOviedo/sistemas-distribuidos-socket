@@ -40,13 +40,64 @@ This is a university project for the course **Sistemas Distribuidos** (Distribut
 ```
 TPNº3/
 ├── server/                 # Backend server
-│   ├── main.py            # FastAPI server with WebSocket endpoint
-│   ├── test.py            # Unit tests for expression evaluation
-│   └── requeriments.txt   # Python dependencies
-├── client/                 # Frontend client (currently empty)
-│   └── (to be implemented)
-└── .gitignore
+│   ├── main.py            # FastAPI server con WebSocket
+│   ├── test.py            # Unit tests
+│   └── requeriments.txt   # Dependencias Python
+├── client/                 # Frontend React + Vite
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Calculator.jsx        # Componente calculadora
+│   │   │   └── Calculator.css
+│   │   ├── App.jsx         # Componente principal
+│   │   ├── App.css
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── package.json        # Dependencias Node.js
+│   └── vite.config.js      # Configuración Vite
+└── README.md
 ```
+
+## Instalación y Ejecución
+
+### Servidor (FastAPI)
+
+```bash
+# Navegar a la carpeta del servidor
+cd server
+
+# Instalar dependencias
+pip install -r requeriments.txt
+
+# Ejecutar servidor (en puerto 8000)
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Cliente (React)
+
+```bash
+# Abrir otra terminal y navegar a la carpeta del cliente
+cd client
+
+# Instalar dependencias Node.js
+npm install
+
+# Ejecutar en modo desarrollo (en puerto 5173)
+npm run dev
+```
+
+Luego abre `http://localhost:5173` en tu navegador.
+
+## Características
+
+✅ Calculadora visual con interfaz moderna
+✅ Botones para números, operadores (+, -, \*, /)
+✅ Soporte para potencias (^)
+✅ Soporte para paréntesis ( )
+✅ Comunicación en tiempo real vía WebSocket
+✅ Historial del último cálculo
+✅ Indicador de conexión con el servidor
+✅ Diseño responsive
 
 ## Features
 
@@ -58,14 +109,14 @@ TPNº3/
 
 #### Supported Operations
 
-| Operator | Description |
-|----------|-------------|
-| `+` | Addition |
-| `-` | Subtraction |
-| `*` | Multiplication |
-| `/` | Division |
-| `^` | Exponentiation |
-| `()` | Parentheses for grouping |
+| Operator | Description              |
+| -------- | ------------------------ |
+| `+`      | Addition                 |
+| `-`      | Subtraction              |
+| `*`      | Multiplication           |
+| `/`      | Division                 |
+| `^`      | Exponentiation           |
+| `()`     | Parentheses for grouping |
 
 #### Special Handling
 
@@ -89,7 +140,7 @@ Currently, a basic HTML/JavaScript client is embedded in the server for testing 
 cd server
 python -m venv env
 source env/bin/activate  # On Windows: env\Scripts\activate
-pip install -r requerments.txt
+pip install -r requeriments.txt
 ```
 
 ### Running the Server
@@ -130,11 +181,11 @@ Connect to the WebSocket endpoint:
 ```javascript
 const ws = new WebSocket("ws://localhost:8000/ws");
 
-ws.onmessage = function(event) {
-    console.log("Response:", event.data);
+ws.onmessage = function (event) {
+  console.log("Response:", event.data);
 };
 
-ws.send("2 + 2");  // Sends expression
+ws.send("2 + 2"); // Sends expression
 // Response: 4
 ```
 

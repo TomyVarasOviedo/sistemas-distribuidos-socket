@@ -6,7 +6,7 @@ from starlette.websockets import WebSocketDisconnect
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000"],
+    allow_origins=["*"],  # Permite conexiones desde cualquier origen (simplificado para desarrollo)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
