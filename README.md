@@ -1,201 +1,284 @@
-# TPNº3 - Sistemas Distribuidos
+# TP N°3 - Sistemas Distribuidos
+### Universidad de Belgrano
 
-This is a university project for the course **Sistemas Distribuidos** (Distributed Systems). The project implements a WebSocket-based chat server with mathematical expression evaluation capabilities.
+---
 
-## Enunciado
+## Integrantes y Roles
 
-1. Crear una calculadora cliente/Servidor.
+| Integrante | Rol |
+|---|---|
+| Tomas Varas | Backend (servidor FastAPI + WebSocket) |
+| Diego Escorche | Frontend (cliente React + Vite) |
+| Audrey Barrientos | Documentación |
+| Joaquin Gamboa | Módulo de pruebas y testing con pytest |
 
-- El cliente envía la formula al servidor quien realizara los cálculos y retornara el resultado.
-- El servidor deberá soporta las siguientes operaciones:
-- - (SUMA),
-- - (RESTA),
-- - (MULTIPLICACION),
-- - (DIVISION),
-- - (Potencia),
+---
 
-- El Servidor deberá respetar el orden de aplicación de operaciones.
-- Deberá soportar el uso de paréntesis ( ), con el consecuente cambio en el orden de las operaciones.
+## Descripción del Proyecto
 
-2. Probar el [programa](https://3523.campusinstituto.com.ar/mod/resource/view.php?id=531089) resolviendo los siguientes cálculos:
+Este proyecto implementa una **calculadora cliente/servidor** utilizando el protocolo **WebSocket** para la comunicación en tiempo real. El cliente envía una expresión matemática al servidor, el servidor la evalúa respetando el orden de operaciones y devuelve el resultado.
 
-- 1+2+3+4+5+6+7+8+9+10
-- 1*2+3^4-5*6+7/8+9/10
-- 1*(2+3^4)-5*(6+7)/(8+9/10)
-- 1*(2+3^4)-5*((6+7)/(8+9/10))
+La arquitectura es completamente distribuida: la lógica de cálculo reside exclusivamente en el servidor, mientras que el cliente solo se encarga de la interfaz y de enviar/recibir mensajes.
 
-3. Entregar:
+---
 
-- Archivo comprimido conteniendo el Código Fuente y el Executable
-- Video (link a youtube) o Documento (.pdf) explicando el código y demostrando el funcionamiento del [programa](https://3523.campusinstituto.com.ar/mod/resource/view.php?id=531089) al resolver los cálculos detallados previamente.
+## Arquitectura del Sistema
 
-### Observaciones
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        CLIENTE                               │
+│                  React + Vite  :5173                         │
+│                                                              │
+│   [Interfaz gráfica de calculadora]                          │
+│   Usuario ingresa expresión → se muestra en pantalla         │
+│   Al presionar "=" → se envía al servidor por WebSocket      │
+│   El resultado llega y se muestra en el display              │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       │  WebSocket  ws://localhost:8000/ws
+                       │  (protocolo full-duplex sobre TCP)
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│                        SERVIDOR                              │
+│               FastAPI + Uvicorn  :8000                       │
+│                                                              │
+│   Recibe la expresión como texto                             │
+│   ↓                                                          │
+│   evalute_text(): normaliza y evalúa la expresión            │
+│     · convierte "^" a "**"                                   │
+│     · maneja doble negativo "- -" → "+"                      │
+│     · evalúa con eval() de Python                            │
+│     · captura ZeroDivisionError → devuelve "Error"           │
+│   ↓                                                          │
+│   Devuelve el resultado como string al cliente               │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- Puede realizarse en cualquier lenguaje de programación, pero deberá ser un trabajo propio.
-- Se provee código fuente ejemplo en diferentes lenguajes, el alumno deberá hacerlo funcional y adaptarlo a sus necesidades.
-- Puede Realizarse en forma grupal, PERO deberán repartirse las actividades (documentar quien hizo cada cosa) y no podrán repetir los roles en trabajos posteriores.
+### Flujo de una operación
 
-## Project Structure
+```
+Cliente                              Servidor
+   │                                    │
+   │  Presiona "="                      │
+   │  ws.send("1*(2+3^4)-5*(6+7)")      │
+   │ ─────────────────────────────────> │
+   │                                    │  evalute_text("1*(2+3^4)-5*(6+7)")
+   │                                    │  → "1*(2+3**4)-5*(6+7)"
+   │                                    │  → eval(...) = 75.69...
+   │                                    │
+   │  ws.send("75.69662921438315")       │
+   │ <───────────────────────────────── │
+   │                                    │
+   │  display muestra: 75.69...         │
+```
+
+---
+
+## Estructura del Proyecto
 
 ```
 TPNº3/
-├── server/                 # Backend server
-│   ├── main.py            # FastAPI server con WebSocket
-│   ├── test.py            # Unit tests
-│   └── requeriments.txt   # Dependencias Python
-├── client/                 # Frontend React + Vite
+├── server/
+│   ├── main.py             # Servidor FastAPI con endpoint WebSocket
+│   ├── test.py             # Tests unitarios con pytest
+│   └── requeriments.txt    # Dependencias Python
+├── client/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── Calculator.jsx        # Componente calculadora
-│   │   │   └── Calculator.css
-│   │   ├── App.jsx         # Componente principal
+│   │   │   ├── Calculator.jsx   # Componente principal de la calculadora
+│   │   │   └── Calculator.css   # Estilos del componente
+│   │   ├── App.jsx          # Componente raíz, maneja estado de conexión
 │   │   ├── App.css
-│   │   ├── main.jsx
+│   │   ├── main.jsx         # Punto de entrada de React
 │   │   └── index.css
 │   ├── index.html
-│   ├── package.json        # Dependencias Node.js
-│   └── vite.config.js      # Configuración Vite
+│   ├── package.json
+│   └── vite.config.js
 └── README.md
 ```
 
+---
+
+## Tecnologías Utilizadas
+
+| Tecnología | Versión | Uso |
+|---|---|---|
+| Python | 3.12 | Lenguaje del servidor |
+| FastAPI | 0.135.1 | Framework web del servidor |
+| Uvicorn | 0.41.0 | Servidor ASGI |
+| WebSockets | 16.0 | Protocolo de comunicación |
+| React | 18.2.0 | Biblioteca UI del cliente |
+| Vite | 5.0.0 | Bundler y dev server del cliente |
+| Pytest | - | Framework de testing |
+
+---
+
+## Operaciones Soportadas
+
+| Operador | Operación | Ejemplo |
+|---|---|---|
+| `+` | Suma | `3 + 5` → `8` |
+| `-` | Resta | `10 - 4` → `6` |
+| `*` | Multiplicación | `6 * 7` → `42` |
+| `/` | División | `10 / 4` → `2.5` |
+| `^` | Potencia | `2 ^ 8` → `256` |
+| `( )` | Paréntesis | `(2+3) * 4` → `20` |
+
+El servidor respeta el orden de precedencia de operadores (PEMDAS) y soporta expresiones anidadas con paréntesis.
+
+---
+
 ## Instalación y Ejecución
 
-### Servidor (FastAPI)
+### Requisitos previos
+
+- Python 3.11 o superior
+- Node.js 18 o superior
+
+### Servidor
 
 ```bash
 # Navegar a la carpeta del servidor
 cd server
 
+# Crear entorno virtual
+python3 -m venv .venv
+source .venv/bin/activate        # En Windows: .venv\Scripts\activate
+
 # Instalar dependencias
 pip install -r requeriments.txt
 
-# Ejecutar servidor (en puerto 8000)
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# Ejecutar servidor en puerto 8000
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### Cliente (React)
+### Cliente
 
 ```bash
-# Abrir otra terminal y navegar a la carpeta del cliente
+# En otra terminal, navegar a la carpeta del cliente
 cd client
 
-# Instalar dependencias Node.js
+# Instalar dependencias
 npm install
 
-# Ejecutar en modo desarrollo (en puerto 5173)
+# Ejecutar en modo desarrollo en puerto 5173
 npm run dev
 ```
 
-Luego abre `http://localhost:5173` en tu navegador.
+Abrir `http://localhost:5173` en el navegador.
 
-## Características
+---
 
-✅ Calculadora visual con interfaz moderna
-✅ Botones para números, operadores (+, -, \*, /)
-✅ Soporte para potencias (^)
-✅ Soporte para paréntesis ( )
-✅ Comunicación en tiempo real vía WebSocket
-✅ Historial del último cálculo
-✅ Indicador de conexión con el servidor
-✅ Diseño responsive
+## Descripción del Código
 
-## Features
+### Servidor — `server/main.py`
 
-### Server (FastAPI + WebSocket)
+El servidor se construye con **FastAPI** y expone dos endpoints:
 
-- **WebSocket Endpoint**: Real-time bidirectional communication at `/ws`
-- **Health Check**: Simple HTML interface at `/`
-- **Mathematical Expression Evaluator**: Parses and evaluates mathematical expressions
+#### `GET /`
+Devuelve una página HTML de prueba con un cliente WebSocket básico embebido, útil para verificar que el servidor funciona sin necesidad de correr el frontend.
 
-#### Supported Operations
+#### `WebSocket /ws`
+Endpoint principal. Mantiene la conexión abierta en un loop continuo:
 
-| Operator | Description              |
-| -------- | ------------------------ |
-| `+`      | Addition                 |
-| `-`      | Subtraction              |
-| `*`      | Multiplication           |
-| `/`      | Division                 |
-| `^`      | Exponentiation           |
-| `()`     | Parentheses for grouping |
+```python
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()   # espera una expresión
+        response = evalute_text(data)           # la evalúa
+        await websocket.send_text(str(response)) # devuelve el resultado
+```
 
-#### Special Handling
+#### `evalute_text(expression: str) → str`
+Función encargada de normalizar y evaluar la expresión matemática recibida:
 
-- `^` is converted to `**` for Python evaluation
-- Negative numbers (e.g., `10 - -5`) are handled correctly
-- Division by zero returns `"Error"`
+1. Si contiene `^`, lo reemplaza por `**` (sintaxis de Python para potencia).
+2. Si contiene `- -`, lo reemplaza por `+` (doble negativo).
+3. Llama a `eval()` sobre la expresión normalizada.
+4. Si ocurre `ZeroDivisionError`, retorna el string `"Error"`.
 
-### Client
+#### CORS
+Se configura `CORSMiddleware` con `allow_origins=["*"]` para permitir conexiones desde el cliente React en desarrollo.
 
-Currently, a basic HTML/JavaScript client is embedded in the server for testing purposes. The `client/` directory is available for implementing a separate frontend application.
+---
 
-## Installation & Setup
+### Cliente — `client/src/`
 
-### Prerequisites
+#### `App.jsx`
+Componente raíz. Al montarse, intenta establecer una conexión WebSocket de prueba para verificar que el servidor esté disponible. Muestra un banner de error si no puede conectarse, o un indicador verde si la conexión fue exitosa. Luego renderiza el componente `<Calculator />`.
 
-- Python 3.11+
+#### `components/Calculator.jsx`
+Componente principal de la interfaz. Maneja:
 
-### Server Setup
+- **Estado `display`**: la expresión que se muestra en pantalla mientras el usuario construye la operación.
+- **Estado `history`**: guarda el último cálculo realizado.
+- **Estado `wsStatus`**: indica el estado de la conexión WebSocket (`conectando`, `conectado`, `cerrado`, `error`).
+- **`wsRef`**: referencia a la instancia de WebSocket, creada en `useEffect` al montar el componente.
+
+Cuando el usuario presiona `=`, se llama a `handleEqual()`, que verifica que la conexión esté abierta (`readyState === WebSocket.OPEN`) y envía la expresión al servidor con `ws.send(display)`. La respuesta llega por `ws.onmessage` y actualiza el display con el resultado.
+
+---
+
+## Testing — `server/test.py`
+
+Los tests unitarios validan la función `evalute_text` directamente, sin necesidad de levantar el servidor.
+
+Se utiliza `@pytest.mark.parametrize` para ejecutar múltiples casos de prueba con una sola función:
+
+```python
+@pytest.mark.parametrize("entrada, esperado", [...])
+def test_evalute_text(entrada, esperado):
+    assert evalute_text(entrada) == pytest.approx(esperado)
+```
+
+`pytest.approx` se usa para comparar resultados con punto flotante, tolerando errores de precisión mínimos.
+
+### Casos de prueba
+
+| Expresión | Resultado esperado | Qué valida |
+|---|---|---|
+| `1+2+3+4+5+6+7+8+9+10` | `55` | Suma encadenada |
+| `1*2+3^4-5*6+7/8+9/10` | `54.775` | Precedencia de operadores |
+| `1*(2+3^4)-5*(6+7)/(8+9/10)` | `75.6966...` | Paréntesis anidados |
+| `1*(2+3^4)-5*((6+7)/(8+9/10))` | `75.6966...` | Paréntesis dobles |
+| `2-2+2*4*6*(56-5-1)+32` | `2432` | Expresión compleja |
+| `10 + 5 * 2 - 8 / 4` | `18` | Orden de operaciones |
+| `-5 * -5` | `25` | Números negativos |
+| `10 - -5` | `15` | Doble negativo |
+| `0.1 + 0.2` | `0.3` | Decimales |
+| `0 * (500 / 2.5)^3` | `0` | Potencia con resultado cero |
+| `(2^3 + 2^2) / 2` | `6` | Potencias con paréntesis |
+| `0 / 0` | `"Error"` | División por cero |
+
+### Ejecutar los tests
 
 ```bash
 cd server
-python -m venv env
-source env/bin/activate  # On Windows: env\Scripts\activate
-pip install -r requeriments.txt
+source .venv/bin/activate
+pytest test.py -v
 ```
 
-### Running the Server
+---
 
-```bash
-cd server
-uvicorn main:app --reload
-```
+## Uso de la API WebSocket
 
-The server will start at `http://localhost:8000`
-
-## Testing
-
-Run the unit tests for the expression evaluator:
-
-```bash
-cd server
-pytest test.py
-```
-
-### Test Cases
-
-The test suite validates:
-
-- Basic arithmetic (`1+2+3+4+5+6+7+8+9+10` → `55`)
-- Mixed operations with exponents (`1*2+3^4-5*6+7/8+9/10` → `54.775`)
-- Complex nested expressions with parentheses
-- Negative numbers (`-5 * -5` → `25`)
-- Double negatives (`10 - -5` → `15`)
-- Decimal numbers (`0.1 + 0.2` → `0.3`)
-- Exponents with division (`0 * (500 / 2.5)^3` → `0`)
-- Error handling for division by zero (`0 / 0` → `"Error"`)
-
-## API Usage
-
-Connect to the WebSocket endpoint:
+Es posible conectarse al servidor desde cualquier cliente WebSocket. Ejemplo en JavaScript:
 
 ```javascript
 const ws = new WebSocket("ws://localhost:8000/ws");
 
-ws.onmessage = function (event) {
-  console.log("Response:", event.data);
-};
+ws.onopen = () => console.log("Conectado");
 
-ws.send("2 + 2"); // Sends expression
-// Response: 4
+ws.onmessage = (event) => console.log("Resultado:", event.data);
+
+ws.send("1*(2+3^4)-5*(6+7)/(8+9/10)");
+// Resultado: 75.69662921438315
 ```
 
-## Technologies Used
+---
 
-- **FastAPI**: Modern Python web framework
-- **Uvicorn**: ASGI server
-- **WebSocket**: Real-time communication protocol
-- **Pytest**: Testing framework
+## Licencia
 
-## License
-
-Academic project for Universidad.
+Trabajo práctico académico — Universidad de Belgrano.
