@@ -1,4 +1,5 @@
-# TP N°3 - Sistemas Distribuidos
+# TP N°5 - Sistemas Distribuidos
+
 ### Universidad de Belgrano
 
 ---
@@ -7,10 +8,10 @@
 
 | Integrante | Rol |
 |---|---|
-| Tomas Varas | Backend (servidor FastAPI + WebSocket) |
-| Diego Escorche | Frontend (cliente React + Vite) |
-| Audrey Barrientos | Documentación |
-| Joaquin Gamboa | Módulo de pruebas y testing con pytest |
+| Diego Escorche | Backend (servidor FastAPI + WebSocket) |
+| Tomás Varas | Frontend (cliente React + Vite & Rust + ratatui) |
+| Joaquin Gamboa | Documentación |
+| Audrey Barrientos | Módulo de pruebas y testing |
 
 ---
 
@@ -26,37 +27,69 @@ La arquitectura es completamente distribuida: la lógica de cálculo reside excl
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        CLIENTE                               │
-│                  React + Vite  :5173                         │
-│                                                              │
-│   [Interfaz gráfica de calculadora]                          │
-│   Usuario ingresa expresión → se muestra en pantalla         │
-│   Al presionar "=" → se envía al servidor por WebSocket      │
-│   El resultado llega y se muestra en el display              │
+│                     CLIENTES                                │
+├─────────────────────────────────────────────────────────────┤
+│  React + Vite (GUI)           │  Rust + Ratatui (TUI)       │
+│        :5173                  │        Terminal             │
+│                                                             │
+│   [Interfaz gráfica]          │  [Interfaz terminal]        │
+│   Usuario ingresa expresión   │  Usuario escribe expr       │
+│   Presiona "=" → WebSocket    │  Enter → WebSocket          │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       │  WebSocket  ws://localhost:8000/ws
+                       │  (protocolo full-duplex sobre TCP)
+                       │
+┌──────────────────────▼───────────────────────────────────────┐
+│                        SERVIDOR                              │
+|               FastAPI + Uvicorn  :8000                       |
+|                                                              |
+|   Recibe la expresión como texto                             |
+|   ↓                                                          |
+|   evalute_text(): normaliza y evalúa la expresión            |
+|     · convierte "^" a "**"                                   |
+|     · maneja doble negativo "- -" → "+"                      |
+|     · evalúa con eval() de Python                            |
+|     · captura ZeroDivisionError → devuelve "Error"           |
+|   ↓                                                          |
+|   Devuelve el resultado como string al cliente               |
+└──────────────────────────────────────────────────────────────┘
+```
+
+┌─────────────────────────────────────────────────────────────┐
+│                        CLIENTE                              │
+│                  React + Vite  :5173                        │
+│                                                             │
+│   [Interfaz gráfica de calculadora]                         │
+│   Usuario ingresa expresión → se muestra en pantalla        │
+│   Al presionar "=" → se envía al servidor por WebSocket     │
+│   El resultado llega y se muestra en el display             │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        │  WebSocket  ws://localhost:8000/ws
                        │  (protocolo full-duplex sobre TCP)
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
-│                        SERVIDOR                              │
-│               FastAPI + Uvicorn  :8000                       │
-│                                                              │
-│   Recibe la expresión como texto                             │
-│   ↓                                                          │
-│   evalute_text(): normaliza y evalúa la expresión            │
-│     · convierte "^" a "**"                                   │
-│     · maneja doble negativo "- -" → "+"                      │
-│     · evalúa con eval() de Python                            │
-│     · captura ZeroDivisionError → devuelve "Error"           │
-│   ↓                                                          │
-│   Devuelve el resultado como string al cliente               │
+│                        SERVIDOR                             │
+│               FastAPI + Uvicorn  :8000                      │
+│                                                             │
+│   Recibe la expresión como texto                            │
+│   ↓                                                         │
+│   evalute_text(): normaliza y evalúa la expresión           │
+│     · convierte "^" a "**"                                  │
+│     · maneja doble negativo "- -" → "+"                     │
+│     · evalúa con eval() de Python                           │
+│     · captura ZeroDivisionError → devuelve "Error"          │
+│   ↓                                                         │
+│   Devuelve el resultado como string al cliente              │
 └─────────────────────────────────────────────────────────────┘
+
 ```
 
 ### Flujo de una operación
 
 ```
+
 Cliente                              Servidor
    │                                    │
    │  Presiona "="                      │
@@ -66,10 +99,11 @@ Cliente                              Servidor
    │                                    │  → "1*(2+3**4)-5*(6+7)"
    │                                    │  → eval(...) = 75.69...
    │                                    │
-   │  ws.send("75.69662921438315")       │
+   │  ws.send("75.69662921438315")      │
    │ <───────────────────────────────── │
    │                                    │
    │  display muestra: 75.69...         │
+
 ```
 
 ---
@@ -77,12 +111,13 @@ Cliente                              Servidor
 ## Estructura del Proyecto
 
 ```
+
 TPNº3/
 ├── server/
 │   ├── main.py             # Servidor FastAPI con endpoint WebSocket
 │   ├── test.py             # Tests unitarios con pytest
 │   └── requeriments.txt    # Dependencias Python
-├── client/
+├── client/                 # Cliente React + Vite (interfaz gráfica)
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Calculator.jsx   # Componente principal de la calculadora
@@ -94,7 +129,14 @@ TPNº3/
 │   ├── index.html
 │   ├── package.json
 │   └── vite.config.js
+├── client_rust/            # Cliente Rust TUI (interfaz terminal)
+│   ├── src/
+│   │   ├── main.rs         # Punto de entrada y loop principal
+│   │   └── ui.rs           # Componentes de UI y lógica de la app
+│   ├── Cargo.toml          # Dependencias Rust
+│   └── target/             # Binario compilado
 └── README.md
+
 ```
 
 ---
@@ -110,6 +152,10 @@ TPNº3/
 | React | 18.2.0 | Biblioteca UI del cliente |
 | Vite | 5.0.0 | Bundler y dev server del cliente |
 | Pytest | - | Framework de testing |
+| Rust | 1.80+ | Lenguaje del cliente TUI |
+| tungstenite | 0.23 | Cliente WebSocket en Rust |
+| ratatui | 0.30 | Biblioteca TUI para interfaz terminal |
+| crossterm | 0.29 | Manejo de terminal cruzada |
 
 ---
 
@@ -134,6 +180,7 @@ El servidor respeta el orden de precedencia de operadores (PEMDAS) y soporta exp
 
 - Python 3.11 o superior
 - Node.js 18 o superior
+- Rust toolchain (para el cliente TUI)
 
 ### Servidor
 
@@ -152,7 +199,7 @@ pip install -r requeriments.txt
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### Cliente
+### Cliente React
 
 ```bash
 # En otra terminal, navegar a la carpeta del cliente
@@ -167,6 +214,24 @@ npm run dev
 
 Abrir `http://localhost:5173` en el navegador.
 
+### Cliente Rust (TUI)
+
+```bash
+# Navegar a la carpeta del cliente Rust
+cd client_rust
+
+# Compilar (modo debug)
+cargo build
+
+# O compilar en modo release para mejor rendimiento
+cargo build --release
+
+# Ejecutar
+cargo run --release
+```
+
+El cliente se conecta a `ws://localhost:8000/ws`. Requiere que el servidor esté corriendo.
+
 ---
 
 ## Descripción del Código
@@ -176,9 +241,11 @@ Abrir `http://localhost:5173` en el navegador.
 El servidor se construye con **FastAPI** y expone dos endpoints:
 
 #### `GET /`
+
 Devuelve una página HTML de prueba con un cliente WebSocket básico embebido, útil para verificar que el servidor funciona sin necesidad de correr el frontend.
 
 #### `WebSocket /ws`
+
 Endpoint principal. Mantiene la conexión abierta en un loop continuo:
 
 ```python
@@ -192,6 +259,7 @@ async def websocket_endpoint(websocket: WebSocket):
 ```
 
 #### `evalute_text(expression: str) → str`
+
 Función encargada de normalizar y evaluar la expresión matemática recibida:
 
 1. Si contiene `^`, lo reemplaza por `**` (sintaxis de Python para potencia).
@@ -200,6 +268,7 @@ Función encargada de normalizar y evaluar la expresión matemática recibida:
 4. Si ocurre `ZeroDivisionError`, retorna el string `"Error"`.
 
 #### CORS
+
 Se configura `CORSMiddleware` con `allow_origins=["*"]` para permitir conexiones desde el cliente React en desarrollo.
 
 ---
@@ -207,9 +276,11 @@ Se configura `CORSMiddleware` con `allow_origins=["*"]` para permitir conexiones
 ### Cliente — `client/src/`
 
 #### `App.jsx`
+
 Componente raíz. Al montarse, intenta establecer una conexión WebSocket de prueba para verificar que el servidor esté disponible. Muestra un banner de error si no puede conectarse, o un indicador verde si la conexión fue exitosa. Luego renderiza el componente `<Calculator />`.
 
 #### `components/Calculator.jsx`
+
 Componente principal de la interfaz. Maneja:
 
 - **Estado `display`**: la expresión que se muestra en pantalla mientras el usuario construye la operación.
@@ -218,6 +289,43 @@ Componente principal de la interfaz. Maneja:
 - **`wsRef`**: referencia a la instancia de WebSocket, creada en `useEffect` al montar el componente.
 
 Cuando el usuario presiona `=`, se llama a `handleEqual()`, que verifica que la conexión esté abierta (`readyState === WebSocket.OPEN`) y envía la expresión al servidor con `ws.send(display)`. La respuesta llega por `ws.onmessage` y actualiza el display con el resultado.
+
+---
+
+### Cliente Rust — `client_rust/src/`
+
+El cliente Rust es una **interfaz de terminal (TUI)** que se conecta al servidor WebSocket para realizar cálculos. Utiliza la biblioteca `ratatui` para renderizar la interfaz y `tungstenite` para la conexión WebSocket.
+
+#### `main.rs`
+
+Punto de entrada. Establece la conexión WebSocket con el servidor en `ws://localhost:8000/ws` y configura el entorno terminal (modo raw, pantalla alternativa). El loop principal:
+
+- Renderiza la interfaz en cada tick
+- Procesa eventos de teclado (Enter para calcular, Esc para limpiar, `?` para ayuda, Ctrl+C para salir)
+- Navegación con flechas y edición con Backspace/Delete
+
+#### `ui.rs`
+
+Contiene la lógica de la aplicación y las funciones de renderizado:
+
+- **`App`**: estructura principal que mantiene el estado (input, cursor, historial, conexión WebSocket)
+- **`evaluate()`**: envía la expresión al servidor y parsea la respuesta
+- **`render_body()`**: renderiza el panel izquierdo con el logo ASCII de la calculadora
+- **`render_history()`**: muestra el historial de operaciones con resultados formateados
+- **`render_prompt()`**: área de entrada con cursor animado y atajos de teclado
+- **`render_help()`**: popup de ayuda con operadores y ejemplos
+
+##### Atajos de teclado
+
+| Tecla | Acción |
+|---|---|
+| `Enter` | Enviar expresión al servidor |
+| `Esc` | Limpiar entrada / Cerrar ayuda |
+| `?` | Mostrar ayuda |
+| `←` / `→` | Mover cursor |
+| `Backspace` | Borrar carácter antes del cursor |
+| `Delete` | Borrar carácter después del cursor |
+| `Ctrl+C` | Salir |
 
 ---
 
