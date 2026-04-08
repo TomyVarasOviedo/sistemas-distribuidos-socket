@@ -54,7 +54,6 @@ La arquitectura es completamente distribuida: la lógica de cálculo reside excl
 |   ↓                                                          |
 |   Devuelve el resultado como string al cliente               |
 └──────────────────────────────────────────────────────────────┘
-```
 
 ┌─────────────────────────────────────────────────────────────┐
 │                        CLIENTE                              │
