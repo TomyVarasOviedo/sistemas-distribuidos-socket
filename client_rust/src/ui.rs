@@ -15,26 +15,34 @@ fn evaluate(socket: &mut WebSocket<MaybeTlsStream<TcpStream>>, expr: &str) -> Re
     socket
         .send(Message::Text(expr.to_string()))
         .map_err(|e| format!("Error al enviar {}", e))?;
-    let msg = socket
-        .read()
-        .map_err(|e| format!("Error al recibir {}", e))?;
 
-    match msg {
-        Message::Text(text) => {
-            let text = text.trim().to_string();
-            if let Ok(v) = text.parse::<f64>() {
-                Ok(v)
-            } else {
-                Err(text)
+    socket
+        .flush()
+        .map_err(|e| format!("Error al hacer flush {}", e))?;
+
+    loop {
+        let msg = socket
+            .read()
+            .map_err(|e| format!("Error al recibir {}", e))?;
+
+        match msg {
+            Message::Text(text) => {
+                let text = text.trim().to_string();
+                if let Ok(v) = text.parse::<f64>() {
+                    return Ok(v);
+                } else {
+                    return Err(text);
+                }
             }
+            Message::Binary(b) => {
+                let text = String::from_utf8_lossy(&b).trim().to_string();
+                return text
+                    .parse::<f64>()
+                    .map_err(|_| format!("Respuesta binaria {}", text));
+            }
+            Message::Close(_) => return Err("El servidor cerró la conexión".into()),
+            _ => continue,
         }
-        Message::Binary(b) => {
-            let text = String::from_utf8_lossy(&b).trim().to_string();
-            text.parse::<f64>()
-                .map_err(|_| format!("Respuesta binaria {}", text))
-        }
-        Message::Close(_) => Err("El servidor cerró la conexión".into()),
-        _ => Err("Error inesperado".into()),
     }
 }
 fn fmt_result(v: f64) -> String {
