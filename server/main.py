@@ -1,3 +1,6 @@
+import uuid
+from datetime import datetime
+
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -6,11 +9,19 @@ from starlette.websockets import WebSocketDisconnect
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite conexiones desde cualquier origen (simplificado para desarrollo)
+    allow_origins=[
+        "*"
+    ],  # Permite conexiones desde cualquier origen (simplificado para desarrollo)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+CYAN = "\033[96m"
+RESET = "\033[0m"
+BLUE = "\033[34m"
+MAGENTA = "\033[35m"
+RED = "\033[31m"
+active_conection: list[WebSocket] = []
 html = """
 <!DOCTYPE html>
 <html>
@@ -68,14 +79,37 @@ async def check_healt():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    client_id = str(uuid.uuid4())
+    conecction_time = datetime.now()
+    active_conection.append(websocket)
+    print(f"{MAGENTA}LOG:{RESET}[{CYAN}{client_id}{RESET}] ")
     while True:
         try:
             data = await websocket.receive_text()
             response = evalute_text(data)
             await websocket.send_text(str(response))
-        except WebSocketDisconnect as e:
-            print(f"Error: Desconexion inesperada: {e}")
-            pass
+        except (WebSocketDisconnect, RuntimeError) as e:
+            diconnect_time = datetime.now()
+            duration = diconnect_time - conecction_time
+            print(f"[{BLUE}{client_id}{RESET}] -> {CYAN}{duration.seconds} sg {RESET}")
+            if isinstance(e, WebSocketDisconnect):
+                if e.code == 1000:
+                    pass
+                elif e.code == 1001:  # Cliente abandonó
+                    print(
+                        f"{RED}ERROR:{RESET}[{CYAN}{client_id}{RESET}] Cliente abandonado"
+                    )
+                else:  # Cierre anormal
+                    print(
+                        f"{RED}ERROR:{RESET}[{CYAN}{client_id}{RESET}] Desconexión inesperada | Código: {e.code}"
+                    )
+            else:
+                print(
+                    f"{RED}ERROR:{RESET}[{CYAN}{client_id}{RESET}] -> Error de conexion"
+                )
+            if websocket in active_conection:
+                active_conection.remove(websocket)
+            break
 
 
 if __name__ == "__main__":
