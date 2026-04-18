@@ -107,6 +107,43 @@ Cliente                              Servidor
 
 ---
 
+## Manejo de Múltiples Clientes
+
+El servidor implementa soporte para múltiples clientes concurrentes mediante dos mecanismos clave:
+
+### 1. Corrutinas Asíncronas
+
+FastAPI ejecuta cada conexión WebSocket como una **corrutina independiente** (`async def`). Cuando un cliente se conecta, se crea una nueva instancia de `websocket_endpoint` que corre de forma paralela a las demás conexiones. Esto lo permite el modelo async de Python + Uvicorn: múltiples clientes no bloquean el servidor.
+
+### 2. Loop por Cliente
+
+Cada conexión mantiene su propio `while True:` en `server/main.py:86-91`:
+
+```python
+while True:
+    data = await websocket.receive_text()    # espera mensaje de ESTE cliente
+    response = evalute_text(data)              # procesa expresión
+    await websocket.send_text(str(response))   # responde solo a ese cliente
+```
+
+### 3. Gestión de Conexiones
+
+- **Identificador único**: Se genera un `client_id` con `uuid.uuid4()` para cada cliente
+- **Lista global**: Las conexiones se almacenan en `active_conection: list[WebSocket]`
+- **Tracking de tiempo**: Se registra `connection_time` y `duration` para logging
+- **Desconexión limpia**: Se remueve el WebSocket de la lista cuando se desconecta (líneas 110-111)
+
+### 4. Manejo de Errores
+
+El servidor captura `WebSocketDisconnect` y `RuntimeError` para manejar diferentes tipos de cierre:
+- Código 1000: cierre normal
+- Código 1001: cliente abandonó
+- Otros: desconexión inesperada
+
+**Resumen**: El servidor permite múltiples clientes porque cada uno corre en su propia corrutina async, sin bloquear a los demás. La lista `active_conection` existe para tracking, aunque actualmente no se usa para broadcast.
+
+---
+
 ## Estructura del Proyecto
 
 ```
